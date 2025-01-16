@@ -40,6 +40,31 @@ public class OneBitScalarQuantizerTests extends KNNTestCase {
         assertArrayEquals(new float[] { 4.0f, 5.0f, 6.0f }, meanThresholds, 0.001f);
     }
 
+
+    public void testTrain_withBelowAboveThresholdMeans() throws IOException {
+        float[][] vectors = { { 1.0f, 2.0f, 3.0f }, { 4.0f, 5.0f, 6.0f }, { 7.0f, 8.0f, 9.0f } };
+        TrainingRequest<float[]> trainingRequest = new TrainingRequest<>(vectors.length) {
+            @Override
+            public float[] getVectorAtThePosition(int position) {
+                return vectors[position];
+            }
+        };
+        OneBitScalarQuantizer quantizer = new OneBitScalarQuantizer();
+        QuantizationState state = quantizer.train(trainingRequest);
+
+        assertTrue(state instanceof OneBitScalarQuantizationState);
+        OneBitScalarQuantizationState oneBitState = (OneBitScalarQuantizationState) state;
+
+        float[] expectedMeanThresholds = { 4.0f, 5.0f, 6.0f };
+        assertArrayEquals(expectedMeanThresholds, oneBitState.getMeanThresholds(), 0.001f);
+
+        // Validate below and above thresholds
+        float[] expectedBelowThresholdMeans = { 2.5f, 3.5f, 4.5f };
+        float[] expectedAboveThresholdMeans = { 7.0f, 8.0f, 9.0f };
+        assertArrayEquals(expectedBelowThresholdMeans, oneBitState.getBelowThresholdMeans(), 0.001f);
+        assertArrayEquals(expectedAboveThresholdMeans, oneBitState.getAboveThresholdMeans(), 0.001f);
+    }
+
     public void testQuantize_withState() throws IOException {
         float[] vector = { 3.0f, 6.0f, 9.0f };
         float[] thresholds = { 4.0f, 5.0f, 6.0f };

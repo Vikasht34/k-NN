@@ -33,6 +33,65 @@ public class QuantizationStateTests extends KNNTestCase {
         float delta = 0.0001f;
         assertArrayEquals(mean, deserializedState.getMeanThresholds(), delta);
         assertEquals(params.getSqType(), deserializedState.getQuantizationParams().getSqType());
+        assertEquals(deserializedState.getBelowThresholdMeans().length,0);
+        assertEquals(deserializedState.getAboveThresholdMeans().length,0);
+    }
+
+    // Test serialization and deserialization with optional fields
+    public void testOneBitScalarQuantizationState_WithOptionalFields() throws IOException {
+        ScalarQuantizationParams params = new ScalarQuantizationParams(ScalarQuantizationType.ONE_BIT);
+        float[] mean = {1.0f, 2.0f, 3.0f};
+        float[] belowThresholdMeans = {0.5f, 1.5f, 2.5f};
+        float[] aboveThresholdMeans = {1.5f, 2.5f, 3.5f};
+
+        OneBitScalarQuantizationState state = new OneBitScalarQuantizationState(params, mean, belowThresholdMeans, aboveThresholdMeans);
+
+        // Serialize
+        byte[] serializedState = state.toByteArray();
+
+        // Deserialize
+        StreamInput in = StreamInput.wrap(serializedState);
+        OneBitScalarQuantizationState deserializedState = new OneBitScalarQuantizationState(in);
+
+        // Assertions
+        assertArrayEquals(mean, deserializedState.getMeanThresholds(), 0.0f);
+        assertArrayEquals(belowThresholdMeans, deserializedState.getBelowThresholdMeans(), 0.0f);
+        assertArrayEquals(aboveThresholdMeans, deserializedState.getAboveThresholdMeans(), 0.0f);
+        assertEquals(params, deserializedState.getQuantizationParams());
+    }
+
+    // Test handling of null arrays in RAM usage
+    public void testOneBitScalarQuantizationState_RamBytesUsedWithNulls() {
+        ScalarQuantizationParams params = new ScalarQuantizationParams(ScalarQuantizationType.ONE_BIT);
+        float[] mean = {1.0f, 2.0f, 3.0f};
+
+        OneBitScalarQuantizationState state = new OneBitScalarQuantizationState(params, mean);
+
+        long actualRamBytesUsed = state.ramBytesUsed();
+        long expectedRamBytesUsed = RamUsageEstimator.shallowSizeOfInstance(OneBitScalarQuantizationState.class)
+                + RamUsageEstimator.shallowSizeOf(params)
+                + RamUsageEstimator.sizeOf(mean);
+
+        assertEquals(expectedRamBytesUsed, actualRamBytesUsed);
+    }
+
+    // Test handling of all fields in RAM usage
+    public void testOneBitScalarQuantizationState_RamBytesUsedWithAllFields() {
+        ScalarQuantizationParams params = new ScalarQuantizationParams(ScalarQuantizationType.ONE_BIT);
+        float[] mean = {1.0f, 2.0f, 3.0f};
+        float[] belowThresholdMeans = {0.5f, 1.5f, 2.5f};
+        float[] aboveThresholdMeans = {1.5f, 2.5f, 3.5f};
+
+        OneBitScalarQuantizationState state = new OneBitScalarQuantizationState(params, mean, belowThresholdMeans, aboveThresholdMeans);
+
+        long actualRamBytesUsed = state.ramBytesUsed();
+        long expectedRamBytesUsed = RamUsageEstimator.shallowSizeOfInstance(OneBitScalarQuantizationState.class)
+                + RamUsageEstimator.shallowSizeOf(params)
+                + RamUsageEstimator.sizeOf(mean)
+                + RamUsageEstimator.sizeOf(belowThresholdMeans)
+                + RamUsageEstimator.sizeOf(aboveThresholdMeans);
+
+        assertEquals(expectedRamBytesUsed, actualRamBytesUsed);
     }
 
     public void testMultiBitScalarQuantizationStateSerialization() throws IOException {
@@ -84,6 +143,8 @@ public class QuantizationStateTests extends KNNTestCase {
 
         // Mean array overhead (array header + size of elements)
         manualEstimatedRamBytesUsed += alignSize(16L + 4L * mean.length);
+        manualEstimatedRamBytesUsed += alignSize(4L); // belowThresholdMeans, even though it's null but it takes Object Header
+        manualEstimatedRamBytesUsed += alignSize(4L); // aboveThresholdMeans, even though it's null but it takes Object Header
 
         // 3. RAM Usage from RamUsageEstimator
         long expectedRamBytesUsed = RamUsageEstimator.shallowSizeOfInstance(OneBitScalarQuantizationState.class) + RamUsageEstimator

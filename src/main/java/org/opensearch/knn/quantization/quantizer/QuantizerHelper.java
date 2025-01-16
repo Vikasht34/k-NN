@@ -30,7 +30,6 @@ class QuantizerHelper {
     static float[] calculateMeanThresholds(TrainingRequest<float[]> samplingRequest, int[] sampledIndices) throws IOException {
         int totalSamples = sampledIndices.length;
         float[] mean = null;
-        int lastIndex = 0;
         for (int docId : sampledIndices) {
             float[] vector = samplingRequest.getVectorAtThePosition(docId);
             if (vector == null) {
@@ -51,6 +50,43 @@ class QuantizerHelper {
         }
         return mean;
     }
+
+    static Pair<float[], float[]> calculateBelowAboveThresholdMeans(TrainingRequest<float[]> trainingRequest, float[] thresholds, int[] sampledIndices) throws IOException {
+        int dimension = thresholds.length;
+        float[] belowThresholdMeans = new float[dimension];
+        float[] aboveThresholdMeans = new float[dimension];
+        int[] belowThresholdCounts = new int[dimension];
+        int[] aboveThresholdCounts = new int[dimension];
+
+        for (int docId : sampledIndices) {
+            float[] vector = trainingRequest.getVectorAtThePosition(docId);
+            if (vector == null) {
+                continue;
+            }
+            for (int d = 0; d < dimension; d++) {
+                if (vector[d] <= thresholds[d]) {
+                    belowThresholdMeans[d] += vector[d];
+                    belowThresholdCounts[d]++;
+                } else {
+                    aboveThresholdMeans[d] += vector[d];
+                    aboveThresholdCounts[d]++;
+                }
+            }
+        }
+
+        // Finalize means by dividing by counts
+        for (int d = 0; d < dimension; d++) {
+            if (belowThresholdCounts[d] > 0) {
+                belowThresholdMeans[d] /= belowThresholdCounts[d];
+            }
+            if (aboveThresholdCounts[d] > 0) {
+                aboveThresholdMeans[d] /= aboveThresholdCounts[d];
+            }
+        }
+
+        return new Pair<>(belowThresholdMeans, aboveThresholdMeans);
+    }
+
 
     /**
      * Calculates the mean and standard deviation for each dimension of the vectors in the training request.

@@ -14,6 +14,7 @@ import org.opensearch.knn.quantization.models.requests.TrainingRequest;
 import org.opensearch.knn.quantization.sampler.Sampler;
 import org.opensearch.knn.quantization.sampler.SamplerType;
 import org.opensearch.knn.quantization.sampler.SamplingFactory;
+import oshi.util.tuples.Pair;
 
 import java.io.IOException;
 
@@ -61,7 +62,14 @@ public class OneBitScalarQuantizer implements Quantizer<float[], byte[]> {
     public QuantizationState train(final TrainingRequest<float[]> trainingRequest) throws IOException {
         int[] sampledDocIds = sampler.sample(trainingRequest.getTotalNumberOfVectors(), samplingSize);
         float[] meanThresholds = QuantizerHelper.calculateMeanThresholds(trainingRequest, sampledDocIds);
-        return new OneBitScalarQuantizationState(new ScalarQuantizationParams(ScalarQuantizationType.ONE_BIT), meanThresholds);
+        trainingRequest.resetVectorValues();
+        Pair<float[], float[]> belowAboveMeans = QuantizerHelper.calculateBelowAboveThresholdMeans(trainingRequest, meanThresholds, sampledDocIds);
+        return new OneBitScalarQuantizationState(
+                new ScalarQuantizationParams(ScalarQuantizationType.ONE_BIT),
+                meanThresholds,
+                belowAboveMeans.getA(),
+                belowAboveMeans.getB()
+        );
     }
 
     /**

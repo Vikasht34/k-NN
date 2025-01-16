@@ -22,7 +22,6 @@ import java.io.IOException;
  */
 @Getter
 @NoArgsConstructor // No-argument constructor for deserialization
-@AllArgsConstructor
 public final class OneBitScalarQuantizationState implements QuantizationState {
     private ScalarQuantizationParams quantizationParams;
     /**
@@ -34,6 +33,35 @@ public final class OneBitScalarQuantizationState implements QuantizationState {
      * The quantized vector will be [0, 1, 1].
      */
     private float[] meanThresholds;
+
+    /**
+     * Represents the mean of all values below the threshold for each dimension.
+     */
+    private float[] belowThresholdMeans;
+
+    /**
+     * Represents the mean of all values above the threshold for each dimension.
+     */
+    private float[] aboveThresholdMeans;
+
+
+    // Constructor for backward compatibility
+    public OneBitScalarQuantizationState(ScalarQuantizationParams quantizationParams, float[] meanThresholds) {
+        this(quantizationParams, meanThresholds, null, null);
+    }
+
+    // Full constructor
+    public OneBitScalarQuantizationState(
+            ScalarQuantizationParams quantizationParams,
+            float[] meanThresholds,
+            float[] belowThresholdMeans,
+            float[] aboveThresholdMeans
+    ) {
+        this.quantizationParams = quantizationParams;
+        this.meanThresholds = meanThresholds;
+        this.belowThresholdMeans = belowThresholdMeans;
+        this.aboveThresholdMeans = aboveThresholdMeans;
+    }
 
     @Override
     public ScalarQuantizationParams getQuantizationParams() {
@@ -48,9 +76,16 @@ public final class OneBitScalarQuantizationState implements QuantizationState {
      */
     @Override
     public void writeTo(StreamOutput out) throws IOException {
-        out.writeVInt(Version.CURRENT.id); // Write the version
+        out.writeVInt(Version.CURRENT.id); // Write the versionF
         quantizationParams.writeTo(out);
         out.writeFloatArray(meanThresholds);
+        if(belowThresholdMeans != null) {
+            out.writeFloatArray(belowThresholdMeans);
+        }
+        if(aboveThresholdMeans != null) {
+            out.writeFloatArray(aboveThresholdMeans);
+        }
+
     }
 
     /**
@@ -63,6 +98,10 @@ public final class OneBitScalarQuantizationState implements QuantizationState {
         int version = in.readVInt(); // Read the version
         this.quantizationParams = new ScalarQuantizationParams(in, version);
         this.meanThresholds = in.readFloatArray();
+        if (Version.fromId(version).after(Version.V_2_17_0)) {
+            this.belowThresholdMeans = in.readFloatArray();
+            this.aboveThresholdMeans = in.readFloatArray();
+        }
     }
 
     /**
@@ -139,6 +178,12 @@ public final class OneBitScalarQuantizationState implements QuantizationState {
         long size = RamUsageEstimator.shallowSizeOfInstance(OneBitScalarQuantizationState.class);
         size += RamUsageEstimator.shallowSizeOf(quantizationParams);
         size += RamUsageEstimator.sizeOf(meanThresholds);
+        if (belowThresholdMeans != null) {
+            size += RamUsageEstimator.sizeOf(belowThresholdMeans);
+        }
+        if (aboveThresholdMeans != null) {
+            size += RamUsageEstimator.sizeOf(aboveThresholdMeans);
+        }
         return size;
     }
 }
