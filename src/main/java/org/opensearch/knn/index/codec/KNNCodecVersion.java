@@ -13,7 +13,7 @@ import org.apache.lucene.backward_codecs.lucene94.Lucene94Codec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.backward_codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.backward_codecs.lucene99.Lucene99Codec;
-import org.apache.lucene.codecs.lucene912.Lucene912Codec;
+import org.apache.lucene.backward_codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.opensearch.index.mapper.MapperService;
 import org.opensearch.knn.index.codec.KNN80Codec.KNN80CompoundFormat;
@@ -39,6 +39,7 @@ import java.util.function.Supplier;
  * Abstraction for k-NN codec version, aggregates all details for specific version such as codec name, corresponding
  * Lucene codec, formats including one for k-NN vector etc.
  */
+
 @AllArgsConstructor
 @Getter
 public enum KNNCodecVersion {
