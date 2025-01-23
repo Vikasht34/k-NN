@@ -9,7 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BytesRef;
 import org.opensearch.knn.index.codec.util.KNNVectorSerializer;
@@ -21,6 +21,7 @@ import org.opensearch.knn.training.ByteTrainingDataConsumer;
 import org.opensearch.knn.training.FloatTrainingDataConsumer;
 import org.opensearch.knn.training.TrainingDataConsumer;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
@@ -47,14 +48,25 @@ public enum VectorDataType {
 
         @Override
         public float[] getVectorFromBytesRef(BytesRef binaryValue) {
-            float[] vector = new float[binaryValue.length];
-            int i = 0;
-            int j = binaryValue.offset;
+            if (binaryValue.length % Float.BYTES == 0) {
+                // ✅ Case 1: Stored as encoded floats (each float takes 4 bytes)
+                int numFloats = binaryValue.length / Float.BYTES;
+                float[] vector = new float[numFloats];
 
-            while (i < binaryValue.length) {
-                vector[i++] = binaryValue.bytes[j++];
+                ByteBuffer byteBuffer = ByteBuffer.wrap(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+                for (int i = 0; i < numFloats; i++) {
+                    vector[i] = byteBuffer.getFloat(); // Read as float
+                }
+                return vector;
+            } else {
+                // ✅ Case 2: Stored as raw bytes (each byte is interpreted as a float)
+                float[] vector = new float[binaryValue.length];
+                int i = 0, j = binaryValue.offset;
+                while (i < binaryValue.length) {
+                    vector[i++] = binaryValue.bytes[j++]; // Direct conversion from byte to float
+                }
+                return vector;
             }
-            return vector;
         }
 
         @Override
@@ -100,7 +112,7 @@ public enum VectorDataType {
 
         @Override
         public FieldType createKnnVectorFieldType(int dimension, KNNVectorSimilarityFunction knnVectorSimilarityFunction) {
-            return KnnVectorField.createFieldType(dimension, knnVectorSimilarityFunction.getVectorSimilarityFunction());
+            return KnnFloatVectorField.createFieldType(dimension, knnVectorSimilarityFunction.getVectorSimilarityFunction());
         }
 
         @Override

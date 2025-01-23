@@ -8,6 +8,7 @@ package org.opensearch.knn.index.vectorvalues;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -74,8 +75,18 @@ interface VectorValueExtractorStrategy {
                     if (docIdSetIterator instanceof BinaryDocValues) {
                         final BinaryDocValues values = (BinaryDocValues) docIdSetIterator;
                         return (T) getFloatVectorFromByteRef(values.binaryValue());
-                    } else if (docIdSetIterator instanceof FloatVectorValues) {
-                        return (T) ((FloatVectorValues) docIdSetIterator).vectorValue();
+                    } else if (docIdSetIterator instanceof KnnVectorValues.DocIndexIterator) {
+                        KNNVectorValuesIterator.DocIdsIteratorValues docIdsIteratorValues =
+                            (KNNVectorValuesIterator.DocIdsIteratorValues) vectorValuesIterator;
+                        FloatVectorValues knnVectorValues = (FloatVectorValues) docIdsIteratorValues.getKnnVectorValues();
+                        int ord = ((KnnVectorValues.DocIndexIterator) docIdSetIterator).index();
+                        // **Check if ord is the same as lastOrd** - return cached vector
+                        if (ord == docIdsIteratorValues.getLastOrd()) {
+                            return (T) docIdsIteratorValues.getLastAccessedVector();
+                        }
+                        docIdsIteratorValues.setLastOrd(ord);
+                        docIdsIteratorValues.setLastAccessedVector(knnVectorValues.vectorValue(ord));
+                        return (T) docIdsIteratorValues.getLastAccessedVector();
                     }
                     throw new IllegalArgumentException(
                         "VectorValuesIterator is not of a valid type. Valid Types are: BinaryDocValues and FloatVectorValues"
@@ -86,8 +97,17 @@ interface VectorValueExtractorStrategy {
                         final BinaryDocValues values = (BinaryDocValues) docIdSetIterator;
                         final BytesRef bytesRef = values.binaryValue();
                         return (T) ArrayUtil.copyOfSubArray(bytesRef.bytes, bytesRef.offset, bytesRef.offset + bytesRef.length);
-                    } else if (docIdSetIterator instanceof ByteVectorValues) {
-                        return (T) ((ByteVectorValues) docIdSetIterator).vectorValue();
+                    } else if (docIdSetIterator instanceof KnnVectorValues.DocIndexIterator) {
+                        KNNVectorValuesIterator.DocIdsIteratorValues docIdsIteratorValues =
+                            (KNNVectorValuesIterator.DocIdsIteratorValues) vectorValuesIterator;
+                        ByteVectorValues byteVectorValues = (ByteVectorValues) docIdsIteratorValues.getKnnVectorValues();
+                        int ord = ((KnnVectorValues.DocIndexIterator) docIdSetIterator).index();
+                        if (ord == docIdsIteratorValues.getLastOrd()) {
+                            return (T) docIdsIteratorValues.getLastAccessedVector();
+                        }
+                        docIdsIteratorValues.setLastOrd(ord);
+                        docIdsIteratorValues.setLastAccessedVector(byteVectorValues.vectorValue(ord));
+                        return (T) docIdsIteratorValues.getLastAccessedVector();
                     }
                     throw new IllegalArgumentException(
                         "VectorValuesIterator is not of a valid type. Valid Types are: BinaryDocValues and ByteVectorValues"

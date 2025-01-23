@@ -8,7 +8,6 @@ package org.opensearch.knn.index;
 import lombok.SneakyThrows;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -20,6 +19,7 @@ import org.junit.Assert;
 import org.opensearch.knn.KNNTestCase;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class VectorDataTypeTests extends KNNTestCase {
 
@@ -82,12 +82,7 @@ public class VectorDataTypeTests extends KNNTestCase {
         IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
         IndexWriter writer = new IndexWriter(directory, conf);
         Document knnDocument = new Document();
-        knnDocument.add(
-            new BinaryDocValuesField(
-                MOCK_FLOAT_INDEX_FIELD_NAME,
-                new VectorField(MOCK_FLOAT_INDEX_FIELD_NAME, SAMPLE_FLOAT_VECTOR_DATA, new FieldType()).binaryValue()
-            )
-        );
+        knnDocument.add(new BinaryDocValuesField(MOCK_FLOAT_INDEX_FIELD_NAME, new BytesRef(encodeVector(SAMPLE_FLOAT_VECTOR_DATA))));
         writer.addDocument(knnDocument);
         writer.commit();
         writer.close();
@@ -97,12 +92,7 @@ public class VectorDataTypeTests extends KNNTestCase {
         IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
         IndexWriter writer = new IndexWriter(directory, conf);
         Document knnDocument = new Document();
-        knnDocument.add(
-            new BinaryDocValuesField(
-                MOCK_BYTE_INDEX_FIELD_NAME,
-                new VectorField(MOCK_BYTE_INDEX_FIELD_NAME, SAMPLE_BYTE_VECTOR_DATA, new FieldType()).binaryValue()
-            )
-        );
+        knnDocument.add(new BinaryDocValuesField(MOCK_BYTE_INDEX_FIELD_NAME, new BytesRef(SAMPLE_BYTE_VECTOR_DATA)));
         writer.addDocument(knnDocument);
         writer.commit();
         writer.close();
@@ -113,5 +103,13 @@ public class VectorDataTypeTests extends KNNTestCase {
         float[] expected = { 1, 2, 3 };
         BytesRef bytesRef = new BytesRef(vector);
         assertArrayEquals(expected, VectorDataType.BINARY.getVectorFromBytesRef(bytesRef), 0.01f);
+    }
+
+    private byte[] encodeVector(float[] vector) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(vector.length * Float.BYTES);
+        for (float value : vector) {
+            byteBuffer.putFloat(value);
+        }
+        return byteBuffer.array();
     }
 }

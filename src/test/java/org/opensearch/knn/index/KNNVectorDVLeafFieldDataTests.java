@@ -5,11 +5,11 @@
 
 package org.opensearch.knn.index;
 
+import org.apache.lucene.util.BytesRef;
 import org.opensearch.knn.KNNTestCase;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
@@ -20,6 +20,7 @@ import org.opensearch.index.fielddata.ScriptDocValues;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class KNNVectorDVLeafFieldDataTests extends KNNTestCase {
 
@@ -42,12 +43,8 @@ public class KNNVectorDVLeafFieldDataTests extends KNNTestCase {
         IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
         IndexWriter writer = new IndexWriter(directory, conf);
         Document knnDocument = new Document();
-        knnDocument.add(
-            new BinaryDocValuesField(
-                MOCK_INDEX_FIELD_NAME,
-                new VectorField(MOCK_INDEX_FIELD_NAME, new float[] { 1.0f, 2.0f }, new FieldType()).binaryValue()
-            )
-        );
+        byte[] vectorBinary = encodeVector(new float[] { 1.0f, 2.0f });
+        knnDocument.add(new BinaryDocValuesField(MOCK_INDEX_FIELD_NAME, new BytesRef(vectorBinary)));
         knnDocument.add(new NumericDocValuesField(MOCK_NUMERIC_INDEX_FIELD_NAME, 1000));
         writer.addDocument(knnDocument);
         writer.commit();
@@ -95,5 +92,13 @@ public class KNNVectorDVLeafFieldDataTests extends KNNTestCase {
     public void testGetBytesValues() {
         KNNVectorDVLeafFieldData leafFieldData = new KNNVectorDVLeafFieldData(leafReaderContext.reader(), "", VectorDataType.FLOAT);
         expectThrows(UnsupportedOperationException.class, () -> leafFieldData.getBytesValues());
+    }
+
+    private byte[] encodeVector(float[] vector) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(vector.length * Float.BYTES);
+        for (float value : vector) {
+            byteBuffer.putFloat(value);
+        }
+        return byteBuffer.array();
     }
 }

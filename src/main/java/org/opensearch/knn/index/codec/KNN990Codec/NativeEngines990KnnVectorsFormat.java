@@ -71,6 +71,15 @@ public class NativeEngines990KnnVectorsFormat extends KnnVectorsFormat {
         return new NativeEngines990KnnVectorsReader(state, flatVectorsFormat.fieldsReader(state));
     }
 
+    /**
+     * @param s
+     * @return
+     */
+    @Override
+    public int getMaxDimensions(String s) {
+        return Integer.MAX_VALUE;
+    }
+
     @Override
     public String toString() {
         return "NativeEngines99KnnVectorsFormat(name="
