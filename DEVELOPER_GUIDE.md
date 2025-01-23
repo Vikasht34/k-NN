@@ -2,7 +2,7 @@
   - [Getting Started](#getting-started)
     - [Fork OpenSearch k-NN Repo](#fork-opensearch-k-nn-repo)
     - [Install Prerequisites](#install-prerequisites)
-      - [JDK 11](#jdk-11)
+      - [JDK 21](#jdk-21)
       - [CMake](#cmake)
       - [Faiss Dependencies](#Faiss-Dependencies)
       - [Environment](#Environment)
@@ -39,22 +39,19 @@ git clone https://github.com/[your username]/OpenSearch.git
 
 ### Install Prerequisites
 
-#### JDK 11
+#### JDK 21
 
-OpenSearch builds using Java 11 at a minimum. This means you must have a JDK 11 installed with the environment variable 
-`JAVA_HOME` referencing the path to Java home for your JDK 11 installation, e.g. `JAVA_HOME=/usr/lib/jvm/jdk-11`.
+OpenSearch builds using Java 21 at a minimum. This means you must have a JDK 21 installed with the environment variable 
+`JAVA_HOME` referencing the path to Java home for your JDK 21 installation, e.g. `JAVA_HOME=/usr/lib/jvm/jdk-21`.
 
-One easy way to get Java 11 on *nix is to use [sdkman](https://sdkman.io/).
+One easy way to get Java 21 on *nix is to use [sdkman](https://sdkman.io/).
 
 ```bash
 curl -s "https://get.sdkman.io" | bash
 source ~/.sdkman/bin/sdkman-init.sh
-sdk install java 11.0.2-open
-sdk use java 11.0.2-open
+sdk install java 21.0.2-open
+sdk use java 21.0.2-open
 ```
-
-Team has to replace minimum JDK version 14 as it was not an LTS release. JDK 14 should still work for most scenarios.
-In addition to this, the plugin has been tested with JDK 17, and this JDK version is fully supported.
 
 #### CMake
 
@@ -143,6 +140,21 @@ export OPENSEARCH_HOME=the directory of opensearch...
 export JAVA_LIBRARY_PATH=$JAVA_LIBRARY_PATH:$OPENSEARCH_HOME/plugins/opensearch-knn/lib
 ```
 
+CMAKE will use as JAVA_HOME environment whatever your gradle is currently using. For example:
+```bash
+Java home directory found by gradle: /opt/homebrew/Cellar/openjdk@21/21.0.5/libexec/openjdk.jdk/Contents/Home
+=======================================
+OpenSearch Build Hamster says Hello!
+  Gradle Version        : 8.4
+  OS Info               : Mac OS X 14.4 (aarch64)
+  JDK Version           : 21 (Homebrew JDK)
+  JAVA_HOME             : /opt/homebrew/Cellar/openjdk@21/21.0.5/libexec/openjdk.jdk/Contents/Home
+  Random Testing Seed   : 8AB32A4719AA345E
+  In FIPS 140 mode      : false
+=======================================
+```
+The JAVA_HOME used by gradle will be the default that the project will be using.
+
 #### Environment
 
 Currently, the plugin only supports Linux on x64 and arm platforms.
@@ -186,10 +198,10 @@ Please follow these formatting guidelines:
 OpenSearch k-NN uses a [Gradle](https://docs.gradle.org/6.6.1/userguide/userguide.html) wrapper for its build. 
 Run `gradlew` on Unix systems.
 
-Tests use `JAVA11_HOME` environment variable, make sure to add it in the export path else the tests might fail. 
+Tests use `JAVA21_HOME` environment variable, make sure to add it in the export path else the tests might fail. 
 e.g 
 ```
-echo "export JAVA11_HOME=<JDK11 path>" >> ~/.zshrc
+echo "export JAVA21_HOME=<JDK21 path>" >> ~/.zshrc
 source ~/.zshrc
 ```
 
