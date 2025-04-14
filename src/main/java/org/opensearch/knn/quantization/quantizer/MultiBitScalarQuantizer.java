@@ -15,7 +15,6 @@ import org.opensearch.knn.quantization.models.requests.TrainingRequest;
 import org.opensearch.knn.quantization.sampler.Sampler;
 import org.opensearch.knn.quantization.sampler.SamplerType;
 import org.opensearch.knn.quantization.sampler.SamplingFactory;
-import oshi.util.tuples.Pair;
 
 import java.io.IOException;
 
@@ -110,13 +109,12 @@ public class MultiBitScalarQuantizer implements Quantizer<float[], byte[]> {
     @Override
     public QuantizationState train(final TrainingRequest<float[]> trainingRequest) throws IOException {
         int[] sampledIndices = sampler.sample(trainingRequest.getTotalNumberOfVectors(), samplingSize);
-        // Calculate sum, mean, and standard deviation in one pass
-        Pair<float[], float[]> meanAndStdDev = QuantizerHelper.calculateMeanAndStdDev(trainingRequest, sampledIndices);
-        float[][] thresholds = calculateThresholds(meanAndStdDev.getA(), meanAndStdDev.getB());
+
         ScalarQuantizationParams params = (bitsPerCoordinate == 2)
             ? new ScalarQuantizationParams(ScalarQuantizationType.TWO_BIT)
             : new ScalarQuantizationParams(ScalarQuantizationType.FOUR_BIT);
-        return new MultiBitScalarQuantizationState(params, thresholds);
+
+        return QuantizerHelper.calculateQuantizationState(trainingRequest, sampledIndices, params, bitsPerCoordinate);
     }
 
     /**
@@ -128,7 +126,7 @@ public class MultiBitScalarQuantizer implements Quantizer<float[], byte[]> {
      * @param output the QuantizationOutput object to store the quantized representation of the vector.
      */
     @Override
-    public void quantize(final float[] vector, final QuantizationState state, final QuantizationOutput<byte[]> output) {
+    public void quantize(float[] vector, final QuantizationState state, final QuantizationOutput<byte[]> output) {
         if (vector == null) {
             throw new IllegalArgumentException("Vector to quantize must not be null.");
         }
@@ -139,28 +137,12 @@ public class MultiBitScalarQuantizer implements Quantizer<float[], byte[]> {
         if (thresholds == null || thresholds[0].length != vector.length) {
             throw new IllegalArgumentException("Thresholds must not be null and must match the dimension of the vector.");
         }
+        float[][] rotationMatrix = multiBitState.getRotationMatrix();
+        if (rotationMatrix != null) {
+            vector = RandomGaussianRotation.applyRotation(vector, rotationMatrix);
+        }
         output.prepareQuantizedVector(vectorLength);
         BitPacker.quantizeAndPackBits(vector, thresholds, bitsPerCoordinate, output.getQuantizedVector());
-    }
-
-    /**
-     * Calculates the thresholds for quantization based on mean and standard deviation.
-     *
-     * @param meanArray      the mean for each dimension.
-     * @param stdDevArray    the standard deviation for each dimension.
-     * @return the thresholds for quantization.
-     */
-    private float[][] calculateThresholds(final float[] meanArray, final float[] stdDevArray) {
-        int dimension = meanArray.length;
-        float[][] thresholds = new float[bitsPerCoordinate][dimension];
-        float coef = bitsPerCoordinate + 1;
-        for (int i = 0; i < bitsPerCoordinate; i++) {
-            float iCoef = -1 + 2 * (i + 1) / coef;
-            for (int j = 0; j < dimension; j++) {
-                thresholds[i][j] = meanArray[j] + iCoef * stdDevArray[j];
-            }
-        }
-        return thresholds;
     }
 
     /**
