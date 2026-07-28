@@ -168,7 +168,7 @@ public class NativeEngineKNNVectorQueryTests extends OpenSearchTestCase {
         Map<Integer, Float> rescoredLeaf2Results = new HashMap<>(Map.of(0, 21f));
 
         RescoreContext rescoreContext = RescoreContext.builder().oversampleFactor(1.5f).build();
-        int firstPassK = rescoreContext.getFirstPassK(k, true, 1);
+        int firstPassK = rescoreContext.getFirstPassK(k, 1);
         when(knnQuery.getRescoreContext()).thenReturn(RescoreContext.builder().oversampleFactor(1.5f).build());
         when(knnQuery.getK()).thenReturn(k);
         when(knnWeight.getQuery()).thenReturn(knnQuery);
