@@ -10,7 +10,9 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.ScoreMode;
 import org.opensearch.knn.plugin.stats.KNNCounter;
 import org.opensearch.script.ScoreScript;
 import org.opensearch.search.lookup.SearchLookup;
@@ -19,7 +21,7 @@ import org.opensearch.search.lookup.SearchLookup;
  * A factory that creates KNNScoreScriptLeafFactory objects. The factory is responsible for parsing the parameters
  * passed in the query and creating the KNNScoreScriptLeafFactory object.
  */
-public class KNNScoreScriptLeafFactory implements ScoreScript.LeafFactory {
+public class KNNScoreScriptLeafFactory implements ScoreScript.BulkScoringLeafFactory {
     private final Map<String, Object> params;
     private final SearchLookup lookup;
     private final String similaritySpace;
@@ -69,5 +71,24 @@ public class KNNScoreScriptLeafFactory implements ScoreScript.LeafFactory {
     @Override
     public ScoreScript newInstance(LeafReaderContext ctx) throws IOException {
         return knnScoringSpace.getScoreScript(params, field, lookup, ctx, this.searcher);
+    }
+
+    /**
+     * Scores {@code script_score} in doc ID spans so the search's timeout and task cancellation are checked every
+     * {@link KNNScoreBulkScorer#DOCS_BETWEEN_TIMEOUT_CHECK} docs, instead of once per core scoring window (4,096 doc IDs,
+     * doubling up to 1,048,576). Core only calls this when {@code min_score} isn't set.
+     * <p>
+     * Returns null, so core keeps its default per-document scorer, when the searcher has no timeout to check. The
+     * script's index name, shard and index version aren't set here (core sets them on its default path); {@code knn_score}
+     * scripts don't read them.
+     */
+    @Override
+    public BulkScorer bulkScorer(
+        final LeafReaderContext context,
+        final BulkScorer subQueryBulkScorer,
+        final ScoreMode subQueryScoreMode,
+        final float boost
+    ) throws IOException {
+        return KNNScoreBulkScorer.create(this, searcher, context, subQueryBulkScorer, subQueryScoreMode, boost);
     }
 }

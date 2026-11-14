@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Add bulk SIMD scoring for SQ 2-bit and 4-bit HNSW search with runtime-dispatched kernels [#3669](https://github.com/opensearch-project/k-NN/pull/3669)
 * Add support for reading the full-precision vector data with Direct I/O [#3701](https://github.com/opensearch-project/k-NN/pull/3701)
 
+### Bug Fixes
+* Check the search's timeout and task cancellation every 1,000 docs when `script_score` uses `knn_score`, instead of once per core scoring window (up to 1,048,576 docs)
+
 ### Maintenance
 * Establish a separate Mend dependency baseline for the 2.19 maintenance branch [#3665](https://github.com/opensearch-project/k-NN/pull/3665).
 * Fixed build issues happening due to Lucene 10.5.2 upgrade [#3631](https://github.com/opensearch-project/k-NN/pull/3631)
