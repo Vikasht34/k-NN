@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Add support for reading the full-precision vector data with Direct I/O [#3701](https://github.com/opensearch-project/k-NN/pull/3701)
 
 ### Bug Fixes
-* Check the search's timeout and task cancellation every 1,000 docs when `script_score` uses `knn_score`, instead of once per core scoring window (up to 1,048,576 docs)
+* Check the search's timeout and task cancellation every 1,000 docs when `script_score` uses `knn_score` (with or without `min_score`), instead of once per core scoring window (up to 1,048,576 docs)
 
 ### Maintenance
 * Establish a separate Mend dependency baseline for the 2.19 maintenance branch [#3665](https://github.com/opensearch-project/k-NN/pull/3665).
